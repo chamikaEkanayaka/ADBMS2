@@ -41,6 +41,7 @@ router.post('/', (req, res, next) => {
             res.status(500).json({ error: 'Internal Server Error' });
             return;
         } else {
+            console.log("inserted product");
             res.status(200).json(results);
         }
     });
@@ -54,8 +55,16 @@ router.get('/', (req, res, next) => {
         console.error('Error executing MySQL query:', err);
         res.status(500).json({ error: 'Internal Server Error' });
         return;
+      } else {
+        if (results[0]==null){
+            console.log("no any product available");
+            res.status(404).json({
+                "message" : "no any product available"
+            })
+        } else {
+            res.status(200).json(results);
+        }
       }
-      res.status(200).json(results);
     });
 })
 
@@ -68,12 +77,46 @@ router.get('/:productId', (req, res, next) => {
         console.error('Error executing MySQL query:', err);
         res.status(500).json({ error: 'Internal Server Error' });
         return;
+      } else {
+        if (results[0]==null){
+            console.log("Product not available");
+            res.status(404).json({
+                "message" : "Product not available"
+            })
+        } else {
+            res.status(200).json(results);
+        }
       }
-      res.status(200).json(results);
     });
 })
 
-module.exports = router;
+//check productId valid
+router.get('/check/:productId', (req, res, next) => {
+    const product_id = req.params.productId;
+    const query = 'SELECT * FROM inventory WHERE product_id=?';
+    connection.query(query,[product_id], (err, results) => {
+        if (err) {
+            console.error('Error executing MySQL query:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+        } else {
+            if (results[0]==null){
+                console.log(`product_id - ${product_id} : not available`);
+                res.status(200).json({
+                    "isAvailable" : "0",
+                    "remainQuantity" : "0"
+                });
+            } else {
+                console.log(`product_id - ${product_id} : available`);
+                const remainQuan = results[0].quantity
+                res.status(200).json({
+                    "isAvailable" : "1",
+                    "remainQuantity" : `${remainQuan}`
+                });
+            }
+        }
+    })
+})
 
 //update inventrory
 router.patch('/:productId', (req, res, next) => {
@@ -111,6 +154,23 @@ router.patch('/:productId', (req, res, next) => {
     })
 })
 
+//update inventrory qunatity
+router.patch('/quantity/:productId', (req, res, next) => {
+    const productId = req.params.productId;
+    const newQuantity = req.body.newQuantity;
+
+    const query = `UPDATE inventory SET quantity = ? WHERE product_id = ?;`;
+
+    connection.query(query, [newQuantity, productId], (err, results) => {
+        if (err) {
+            console.error('Error executing MySQL query:', err);
+            res.status(500).json({ error: 'Internal Server Error' });
+            return;
+          }
+          res.status(200).json(results);
+    })
+})
+
 //inventory delete
 router.delete('/:productId', (req, res, next) => {
     const productId = req.params.productId;
@@ -126,3 +186,5 @@ router.delete('/:productId', (req, res, next) => {
           res.status(200).json(results);
     })
 });
+
+module.exports = router;
